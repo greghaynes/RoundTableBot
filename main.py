@@ -68,7 +68,7 @@ class IrcBot(evloop.TcpSocketWatcher):
 			cmd = numeric_events[cmd]
 
 		try:
-			func = getattr(self, 'on_'+cmd)
+			func = getattr(self, 'on_'+cmd.lower())
 		except AttributeError:
 			pass
 		else:
@@ -81,7 +81,7 @@ class IrcBot(evloop.TcpSocketWatcher):
 			except AttributeError:
 				pass
 
-	def on_MODE(self, line, args):
+	def on_mode(self, line, args):
 		if not self.is_nicked:
 			self.is_nicked = True
 			self.join_channels()
@@ -92,7 +92,7 @@ class IrcBot(evloop.TcpSocketWatcher):
 		channel = args[1].split(' ')[4]
 		self.channel_names[channel] = names
 
-	def on_PRIVMSG(self, line, args):
+	def on_privmsg(self, line, args):
 		elems = line.split(':')
 		self.handle_privmsg(elems[1].split(' ')[2], elems[2])
 
