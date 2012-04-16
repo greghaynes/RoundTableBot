@@ -68,9 +68,18 @@ class IrcBot(evloop.TcpSocketWatcher):
 			cmd = numeric_events[cmd]
 
 		try:
-			getattr(self, 'on_'+cmd)(line, args)
+			func = getattr(self, 'on_'+cmd)
 		except AttributeError:
-			print '%s not handled' % cmd
+			pass
+		else:
+			func(line, args)
+
+	def handle_privmsg(self, sender, msg):
+		if msg.startswith('.'):
+			try:
+				getattr(self, 'cmd_'+msg.split(' ')[0][1:].lower())(sender, msg)
+			except AttributeError:
+				pass
 
 	def on_MODE(self, line, args):
 		if not self.is_nicked:
@@ -82,6 +91,13 @@ class IrcBot(evloop.TcpSocketWatcher):
 		names = args[2].split(' ')
 		channel = args[1].split(' ')[4]
 		self.channel_names[channel] = names
+
+	def on_PRIVMSG(self, line, args):
+		elems = line.split(':')
+		self.handle_privmsg(elems[1].split(' ')[2], elems[2])
+
+	def cmd_version(self, sender, msg):
+		self.send('PRIVMSG %s :%s\r\n' % (sender, 'Round Table Bot v0.1'))
 
 if __name__=='__main__':
 	bot = IrcBot('irc.cat.pdx.edu', 6667, 'greghayn', 'greghaynes')
