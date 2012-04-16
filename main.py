@@ -1,0 +1,91 @@
+import evloop
+import socket
+
+from irc import numeric_events
+
+class IrcBot(evloop.TcpSocketWatcher):
+
+	def __init__(self, server, port, nick, username, fullname='RTB'):
+		super(IrcBot, self).__init__()
+		self.server = server
+		self.port = port
+		self.nick = nick
+		self.username = username
+		self.fullname = fullname
+		self.buffer = ''
+		self.is_connected = False
+		self.is_nicked = False
+		self.channels = []
+		self.channel_names = {}
+		
+	def connect(self):
+		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		s.connect((self.server, self.port))
+		self.setup_socket(s)
+
+	def join(self, channel):
+		if channel not in self.channels:
+			self.channels.append(channel)
+			if self.is_connected:
+				self.do_join(channel)
+
+	def join_channels(self):
+		for channel in self.channels:
+			self.do_join(channel)
+
+	def do_join(self, channel):
+		self.send('JOIN :%s\r\n' % channel)
+
+	def handle_connect(self):
+		self.send('NICK %s\r\n' % self.nick)
+		self.send('USER %s 0 * : %s\r\n' % (self.username, self.fullname))
+		
+	def handle_read(self, fd):
+		tmp = self.socket.recv(1024)
+		self.buffer += tmp
+		lines = self.buffer.split('\r\n')
+		self.buffer = lines.pop()
+		for line in lines:
+			self.handle_line(line)
+
+	def handle_line(self, line):
+		if not self.is_connected:
+			self.is_connected = True
+			self.handle_connect()
+		parts = line.split(' ')
+
+		if parts[0].startswith(':'):
+			cmd = parts[1]
+			prefix = parts[0][1:]
+			args = parts[2:]
+		else:
+			cmd = parts[0]
+			prefix = None
+			args = parts[1:]
+			args[0] = args[0][1:]
+
+		if cmd.isdigit():
+			cmd = numeric_events[cmd]
+
+		try:
+			getattr(self, 'on_'+cmd)(line, args)
+		except AttributeError:
+			print '%s not handled' % cmd
+
+	def on_MODE(self, line, args):
+		if not self.is_nicked:
+			self.is_nicked = True
+			self.join_channels()
+
+	def on_namreply(self, line, args):
+		args = line.split(':')
+		names = args[2].split(' ')
+		channel = args[1].split(' ')[4]
+		self.channel_names[channel] = names
+
+if __name__=='__main__':
+	bot = IrcBot('irc.cat.pdx.edu', 6667, 'greghayn', 'greghaynes')
+	bot.join('#rtb-test')
+	bot.connect()
+	evloop.EventDispatcher().loop_forever()
+
