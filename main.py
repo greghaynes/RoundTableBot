@@ -1,5 +1,6 @@
 import evloop
 import socket
+import random
 
 from irc import numeric_events
 
@@ -17,6 +18,8 @@ class IrcBot(evloop.TcpSocketWatcher):
 		self.is_nicked = False
 		self.channels = []
 		self.channel_names = {}
+
+		self.table = []
 		
 	def connect(self):
 		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -112,15 +115,29 @@ class IrcBot(evloop.TcpSocketWatcher):
 		except KeyError:
 			pass
 
+	def on_ping(self, line, args):
+		self.send('PONG :%s\r\n' % args[0])
+
 	def cmd_version(self, sender, msg):
 		self.send('PRIVMSG %s :%s\r\n' % (sender, 'Round Table Bot v0.1'))
 
 	def cmd_table(self, sender, msg):
 		self.send('PRIVMSG %s :%s\r\n' % (sender, self.channel_names[sender].keys()))
 
+	def cmd_newtable(self, sender, msg):
+		self.table = self.channel_names[sender].keys()
+		random.shuffle(self.table)
+		self.send('PRIVMSG %s :%s\r\n' % (sender, 'New table created.'))
+
+	def cmd_next(self, sender, msg):
+		try:
+			self.send('PRIVMSG %s :%s\r\n' % (sender, self.table.pop()))
+		except IndexError:
+			self.send('PRIVMSG %s :%s\r\n' % (sender, 'No more members at the table.'))
+
 if __name__=='__main__':
 	bot = IrcBot('irc.cat.pdx.edu', 6667, 'greghayn', 'greghaynes')
-	bot.join('#rtb-test')
+	bot.join('#cscapstone-b')
 	bot.connect()
 	evloop.EventDispatcher().loop_forever()
 
