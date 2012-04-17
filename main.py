@@ -90,14 +90,33 @@ class IrcBot(evloop.TcpSocketWatcher):
 		args = line.split(':')
 		names = args[2].split(' ')
 		channel = args[1].split(' ')[4]
-		self.channel_names[channel] = names
+		self.channel_names[channel] = {}
+		for name in names:
+			self.channel_names[channel][name] = True
 
 	def on_privmsg(self, line, args):
 		elems = line.split(':')
 		self.handle_privmsg(elems[1].split(' ')[2], elems[2])
 
+	def on_join(self, line, args):
+		nick = line.split('!')[0][1:]
+		channel = args[0]
+		if nick != self.nick:
+			self.channel_names[channel][nick] = True
+
+	def on_part(self, line, args):
+		nick = line.split('!')[0][1:]
+		channel = args[0]
+		try:
+			del self.channel_names[channel][nick]
+		except KeyError:
+			pass
+
 	def cmd_version(self, sender, msg):
 		self.send('PRIVMSG %s :%s\r\n' % (sender, 'Round Table Bot v0.1'))
+
+	def cmd_table(self, sender, msg):
+		self.send('PRIVMSG %s :%s\r\n' % (sender, self.channel_names[sender].keys()))
 
 if __name__=='__main__':
 	bot = IrcBot('irc.cat.pdx.edu', 6667, 'greghayn', 'greghaynes')
