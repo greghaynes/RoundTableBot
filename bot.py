@@ -17,8 +17,6 @@ class IrcBot(evloop.TcpSocketWatcher):
 		self.is_connected = False
 		self.is_nicked = False
 		self.channels = []
-
-		self.table = []
 		
 	def connect(self):
 		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -140,6 +138,7 @@ class RoundTableBot(NickRecordingBot):
 
 	def __init__(self, server, port, nick, username, fullname='RTB'):
 		super(RoundTableBot, self).__init__(server, port, nick, username, fullname)
+		self.table = []
 
 	def cmd_newtable(self, sender, msg):
 		self.table = self.channel_nicks(sender)
@@ -150,5 +149,5 @@ class RoundTableBot(NickRecordingBot):
 		try:
 			self.send_privmsg(sender, self.table.pop())
 		except IndexError:
-			self.send_privmsg(sender, 'No more members at the table.')
+			self.send_privmsg(sender, 'No new members at the table.')
 
