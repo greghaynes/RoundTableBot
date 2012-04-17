@@ -122,10 +122,10 @@ class IrcBot(evloop.TcpSocketWatcher):
 		self.send_privmsg(sender, 'Round Table Bot v0.1')
 
 	def cmd_table(self, sender, msg):
-		self.send_privmsg(sender, self.channel_names[sender].keys())
+		self.send_privmsg(sender, self.channel_nicks(sender))
 
 	def cmd_newtable(self, sender, msg):
-		self.table = self.channel_names[sender].keys()
+		self.table = self.channel_nicks(sender)
 		random.shuffle(self.table)
 		self.send_privmsg(sender, 'New table created.')
 
@@ -135,7 +135,9 @@ class IrcBot(evloop.TcpSocketWatcher):
 		except IndexError:
 			self.send_privmsg(sender, 'No more members at the table.')
 
-
 	def send_privmsg(self, to, msg):
 		self.send('PRIVMSG %s :%s\r\n' % (to, msg))
+
+	def channel_nicks(self, channel):
+		return self.channel_names[channel].keys()
 
