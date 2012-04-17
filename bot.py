@@ -17,7 +17,6 @@ class IrcBot(evloop.TcpSocketWatcher):
 		self.is_connected = False
 		self.is_nicked = False
 		self.channels = []
-		self.channel_names = {}
 
 		self.table = []
 		
@@ -89,6 +88,26 @@ class IrcBot(evloop.TcpSocketWatcher):
 			self.is_nicked = True
 			self.join_channels()
 
+	def on_privmsg(self, line, args):
+		elems = line.split(':')
+		self.handle_privmsg(elems[1].split(' ')[2], elems[2])
+
+	def on_ping(self, line, args):
+		self.send('PONG :%s\r\n' % args[0])
+
+	def cmd_version(self, sender, msg):
+		self.send_privmsg(sender, 'Round Table Bot v0.1')
+
+	def send_privmsg(self, to, msg):
+		self.send('PRIVMSG %s :%s\r\n' % (to, msg))
+
+
+class NickRecordingBot(IrcBot):
+
+	def __init__(self, server, port, nick, username, fullname='RTB'):
+		super(NickRecordingBot, self).__init__(server, port, nick, username, fullname)
+		self.channel_names = {}
+
 	def on_namreply(self, line, args):
 		args = line.split(':')
 		names = args[2].split(' ')
@@ -96,10 +115,6 @@ class IrcBot(evloop.TcpSocketWatcher):
 		self.channel_names[channel] = {}
 		for name in names:
 			self.channel_names[channel][name] = True
-
-	def on_privmsg(self, line, args):
-		elems = line.split(':')
-		self.handle_privmsg(elems[1].split(' ')[2], elems[2])
 
 	def on_join(self, line, args):
 		nick = line.split('!')[0][1:]
@@ -115,14 +130,16 @@ class IrcBot(evloop.TcpSocketWatcher):
 		except KeyError:
 			pass
 
-	def on_ping(self, line, args):
-		self.send('PONG :%s\r\n' % args[0])
-
-	def cmd_version(self, sender, msg):
-		self.send_privmsg(sender, 'Round Table Bot v0.1')
-
-	def cmd_table(self, sender, msg):
+	def cmd_listnicks(self, sender, msg):
 		self.send_privmsg(sender, self.channel_nicks(sender))
+
+	def channel_nicks(self, channel):
+		return self.channel_names[channel].keys()
+
+class RoundTableBot(NickRecordingBot):
+
+	def __init__(self, server, port, nick, username, fullname='RTB'):
+		super(RoundTableBot, self).__init__(server, port, nick, username, fullname)
 
 	def cmd_newtable(self, sender, msg):
 		self.table = self.channel_nicks(sender)
@@ -134,10 +151,4 @@ class IrcBot(evloop.TcpSocketWatcher):
 			self.send_privmsg(sender, self.table.pop())
 		except IndexError:
 			self.send_privmsg(sender, 'No more members at the table.')
-
-	def send_privmsg(self, to, msg):
-		self.send('PRIVMSG %s :%s\r\n' % (to, msg))
-
-	def channel_nicks(self, channel):
-		return self.channel_names[channel].keys()
 
