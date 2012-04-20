@@ -3,10 +3,11 @@ import socket
 import random
 
 from irc import numeric_events
+from settings import settings as default_settings
 
 class IrcBot(evloop.TcpSocketWatcher):
 
-	def __init__(self, server, port, nick, username, fullname='RTB'):
+	def __init__(self, server, port, nick, username, fullname='RTB', settings=default_settings()):
 		super(IrcBot, self).__init__()
 		self.server = server
 		self.port = port
@@ -17,6 +18,7 @@ class IrcBot(evloop.TcpSocketWatcher):
 		self.is_connected = False
 		self.is_nicked = False
 		self.channels = []
+		self.settings = settings
 		
 	def connect(self):
 		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -75,11 +77,12 @@ class IrcBot(evloop.TcpSocketWatcher):
 			func(line, args)
 
 	def handle_privmsg(self, sender, msg):
-		if msg.startswith('.'):
+		if msg.startswith(self.settings['cmd_prefix']):
 			try:
 				getattr(self, 'cmd_'+msg.split(' ')[0][1:].lower())(sender, msg)
 			except AttributeError:
-				pass
+				if self.settings['warn_command_notfound']:
+					self.send_privmsg(sender, 'Not a valid command')
 
 	def on_mode(self, line, args):
 		if not self.is_nicked:
@@ -102,8 +105,8 @@ class IrcBot(evloop.TcpSocketWatcher):
 
 class NickRecordingBot(IrcBot):
 
-	def __init__(self, server, port, nick, username, fullname='RTB'):
-		super(NickRecordingBot, self).__init__(server, port, nick, username, fullname)
+	def __init__(self, server, port, nick, username, fullname='RTB', settings=default_settings()):
+		super(NickRecordingBot, self).__init__(server, port, nick, username, fullname, settings)
 		self.channel_names = {}
 
 	def on_namreply(self, line, args):
@@ -136,8 +139,8 @@ class NickRecordingBot(IrcBot):
 
 class RoundTableBot(NickRecordingBot):
 
-	def __init__(self, server, port, nick, username, fullname='RTB'):
-		super(RoundTableBot, self).__init__(server, port, nick, username, fullname)
+	def __init__(self, server, port, nick, username, fullname='RTB', settings=default_settings()):
+		super(RoundTableBot, self).__init__(server, port, nick, username, fullname, settings)
 		self.table = []
 
 	def cmd_newtable(self, sender, msg):
