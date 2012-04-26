@@ -142,15 +142,32 @@ class RoundTableBot(NickRecordingBot):
 	def __init__(self, server, port, nick, username, fullname='RTB', settings=default_settings()):
 		super(RoundTableBot, self).__init__(server, port, nick, username, fullname, settings)
 		self.table = []
+		self.table_blacklist = []
 
-	def cmd_newtable(self, sender, msg):
+	def cmd_tablenew(self, sender, msg):
 		self.table = self.channel_nicks(sender)
 		random.shuffle(self.table)
 		self.send_privmsg(sender, 'New table created.')
 
-	def cmd_next(self, sender, msg):
+	def cmd_tablenext(self, sender, msg):
+		while len(self.table) > 0:
+			victim = self.table.pop()
+			if victim not in self.table_blacklist:
+				self.send_privmsg(sender, victim)
+				return
+		self.send_privmsg(sender, 'No new members at the table.')
+
+	def cmd_tableblock(self, sender, msg):
 		try:
-			self.send_privmsg(sender, self.table.pop())
+			msg = msg.split(' ')[1]
 		except IndexError:
-			self.send_privmsg(sender, 'No new members at the table.')
+			msg = ''
+		if msg == '':
+			self.send_privmsg(sender, 'Usage: tableblock <nick>')
+ 		else:
+			if msg in self.table_blacklist:
+				self.send_privmsg(sender, 'Nick already blocked from table')
+			else:
+				self.table_blacklist.append(msg)
+				self.send_privmsg(sender, 'Blocked %s' % msg)
 
