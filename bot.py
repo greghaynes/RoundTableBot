@@ -79,7 +79,7 @@ class IrcBot(evloop.TcpSocketWatcher):
 	def handle_privmsg(self, sender, msg):
 		if msg.startswith(self.settings['cmd_prefix']):
 			try:
-				getattr(self, 'cmd_'+msg.split(' ')[0][1:].lower())(sender, msg)
+				getattr(self, 'cmd_'+msg.split(' ')[0][1:].lower().replace('.', '_'))(sender, msg)
 			except AttributeError:
 				if self.settings['warn_command_notfound']:
 					self.send_privmsg(sender, 'Not a valid command')
@@ -92,6 +92,10 @@ class IrcBot(evloop.TcpSocketWatcher):
 	def on_privmsg(self, line, args):
 		elems = line.split(':')
 		self.handle_privmsg(elems[1].split(' ')[2], elems[2])
+
+	def on_nicknameinuse(self, line, arg):
+		self.nick = self.nick + '_'
+		self.handle_connect()
 
 	def on_ping(self, line, args):
 		self.send('PONG :%s\r\n' % args[0])
@@ -144,12 +148,12 @@ class RoundTableBot(NickRecordingBot):
 		self.table = []
 		self.table_blacklist = []
 
-	def cmd_tablenew(self, sender, msg):
+	def cmd_table_new(self, sender, msg):
 		self.table = self.channel_nicks(sender)
 		random.shuffle(self.table)
 		self.send_privmsg(sender, 'New table created.')
 
-	def cmd_tablenext(self, sender, msg):
+	def cmd_table_next(self, sender, msg):
 		while len(self.table) > 0:
 			victim = self.table.pop()
 			if victim not in self.table_blacklist:
@@ -157,7 +161,7 @@ class RoundTableBot(NickRecordingBot):
 				return
 		self.send_privmsg(sender, 'No new members at the table.')
 
-	def cmd_tableblock(self, sender, msg):
+	def cmd_table_block(self, sender, msg):
 		try:
 			msg = msg.split(' ')[1]
 		except IndexError:
