@@ -4,6 +4,7 @@ import random
 
 from irc import numeric_events
 from settings import settings as default_settings
+from eventbus import event_bus
 
 class IrcBot(evloop.TcpSocketWatcher):
 
@@ -78,11 +79,13 @@ class IrcBot(evloop.TcpSocketWatcher):
 
 	def handle_privmsg(self, sender, msg):
 		if msg.startswith(self.settings['cmd_prefix']):
+			cmd_str = msg.split(' ')[0][1:].lower().replace('.', '_')
 			try:
-				getattr(self, 'cmd_'+msg.split(' ')[0][1:].lower().replace('.', '_'))(sender, msg)
+				getattr(self, 'cmd_'+cmd_str)(sender, msg)
 			except AttributeError:
 				if self.settings['warn_command_notfound']:
 					self.send_privmsg(sender, 'Not a valid command')
+			event_bus.emit('cmd.'+cmd_str, sender, msg)
 
 	def on_mode(self, line, args):
 		if not self.is_nicked:

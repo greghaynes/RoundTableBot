@@ -1,6 +1,6 @@
 def settings():
 	return {
-		'warn_command_notfound': True,
+		'warn_command_notfound': False,
 		'cmd_prefix': '.',
 		}
 
